@@ -77,14 +77,28 @@ func loadImageFromDisk(filename string) (image.Image, error) {
 
 func logAnalysis(snakeSpaceGrid [][]SnakeSpace, move string) {
 	fmt.Println("SnakeSpace grid:")
-	for _, row := range snakeSpaceGrid {
-		for _, cell := range row {
-			printSnakeSpace(cell)
-			//			fmt.Printf("%v ", cell)
-		}
-		fmt.Println()
-	}
+	printSnakeSpace(snakeSpaceGrid)
 	fmt.Println("Best move:", move)
+}
+
+func snakeSpaceGridAsString(snakeSpaceGrid [][]SnakeSpace) string {
+	result := ""
+	for _, row := range snakeSpaceGrid {
+		for _, snakeSpace := range row {
+			if snakeSpace.SnakeSlot == Head {
+				result += "☺"
+			} else if snakeSpace.SnakeSlot == Snake {
+				result += lookupAdjacencyUnicode(int64(snakeSpace.Adjacencies))
+			} else if snakeSpace.SnakeSlot == Food {
+				result += "♥"
+			} else {
+				result += "░"
+			}
+		}
+		result += "\n"
+	}
+	return result
+
 }
 
 func lookupAdjacencyUnicode(adjacency int64) string {
@@ -115,16 +129,8 @@ func lookupAdjacencyUnicode(adjacency int64) string {
 	return "?"
 }
 
-func printSnakeSpace(snakeSpace SnakeSpace) {
-	if snakeSpace.SnakeSlot == Head {
-		fmt.Print("☺")
-	} else if snakeSpace.SnakeSlot == Snake {
-		fmt.Print(lookupAdjacencyUnicode(int64(snakeSpace.Adjacencies)))
-	} else if snakeSpace.SnakeSlot == Food {
-		fmt.Print("♥")
-	} else {
-		fmt.Print("░")
-	}
+func printSnakeSpace(snakeSpaceGrid [][]SnakeSpace) {
+	fmt.Print(snakeSpaceGridAsString(snakeSpaceGrid))
 }
 
 func dumpImageGridToFiles(imageGrid [][]image.Image) {

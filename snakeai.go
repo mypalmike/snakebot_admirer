@@ -101,12 +101,12 @@ func evaluateMove(game GameState, move string) int {
 
 	// Avoiding traps (collision with wall or self)
 	if gameOver(simulatedGame) {
-		score -= 1000
+		score -= 2 * game.BoardWidth * game.BoardHeight
 	}
 
 	// Distance to the food
 	distance := calculateManhattanDistance(snakeHead(simulatedGame), simulatedGame.Food)
-	score += game.BoardWidth + game.BoardHeight - distance
+	score += game.BoardWidth*game.BoardHeight - distance
 
 	return score
 }
