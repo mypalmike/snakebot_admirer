@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 func determineNextMove(game GameState) string {
 	possibleMoves := []string{"up", "down", "left", "right"}
 
@@ -9,6 +11,9 @@ func determineNextMove(game GameState) string {
 
 	for _, move := range possibleMoves {
 		score := evaluateMove(game, move)
+
+		fmt.Println("Move:", move, "Score:", score)
+
 		if score > bestScore {
 			bestScore = score
 			bestMove = move
@@ -101,7 +106,7 @@ func evaluateMove(game GameState, move string) int {
 
 	// Distance to the food
 	distance := calculateManhattanDistance(snakeHead(simulatedGame), simulatedGame.Food)
-	score -= distance
+	score += game.BoardWidth + game.BoardHeight - distance
 
 	return score
 }
