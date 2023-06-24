@@ -27,6 +27,68 @@ func downloadImage(imageURL string) (image.Image, error) {
 	return imageReader, nil
 }
 
+func autocropImage(sourceImage image.Image) (image.Image, error) {
+	// The image may have alpha boundary pixels, so we need to crop them out
+	// to get the actual game board.
+
+	// Iterate over the image top to bottom, left to right, until finding the top left corner.
+	// This is the first pixel that is not transparent.
+	found := false
+	var minX, minY int
+	for y := sourceImage.Bounds().Min.Y; y < sourceImage.Bounds().Max.Y; y++ {
+		for x := sourceImage.Bounds().Min.X; x < sourceImage.Bounds().Max.X; x++ {
+			// Get the color of the current pixel
+			_, _, _, a := sourceImage.At(x, y).RGBA()
+
+			// If the pixel is not transparent, we have found the top left corner
+			if a != 0 {
+				minX = x
+				minY = y
+				found = true
+				break
+			}
+		}
+
+		if found {
+			break
+		}
+	}
+
+	// Now do the same thing, but starting from the bottom right corner.
+	// This is the bottom right corner of the game board.
+	found = false
+	var maxX, maxY int
+	for y := sourceImage.Bounds().Max.Y - 1; y >= sourceImage.Bounds().Min.Y; y-- {
+		for x := sourceImage.Bounds().Max.X - 1; x >= sourceImage.Bounds().Min.X; x-- {
+			// Get the color of the current pixel
+			_, _, _, a := sourceImage.At(x, y).RGBA()
+
+			// If the pixel is not transparent, we have found the bottom right corner
+			if a != 0 {
+				maxX = x + 1
+				maxY = y + 1
+				found = true
+				break
+			}
+		}
+
+		if found {
+			break
+		}
+	}
+
+	fmt.Println("Crop image results:")
+	fmt.Println("minX:", minX)
+	fmt.Println("minY:", minY)
+	fmt.Println("maxX:", maxX)
+	fmt.Println("maxY:", maxY)
+
+	// Now return a cropped version of the image
+	return sourceImage.(interface {
+		SubImage(r image.Rectangle) image.Image
+	}).SubImage(image.Rect(minX, minY, maxX, maxY)), nil
+}
+
 func extractBoardDimensions(altText string) (int, int, error) {
 	// Regular expression to match the board dimensions
 	r := regexp.MustCompile(`(\d+)x(\d+)`)
@@ -66,10 +128,10 @@ func imageToGridImages(sourceImage image.Image, width int, height int) ([][]imag
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			// Calculate the boundaries of the current grid image
-			minX := int(math.Floor(float64(x) * gridWidth))
-			maxX := int(math.Floor(float64(x+1) * gridWidth))
-			minY := int(math.Floor(float64(y) * gridHeight))
-			maxY := int(math.Floor(float64(y+1) * gridHeight))
+			minX := sourceImage.Bounds().Min.X + int(math.Floor(float64(x)*gridWidth))
+			maxX := sourceImage.Bounds().Min.X + int(math.Floor(float64(x+1)*gridWidth))
+			minY := sourceImage.Bounds().Min.Y + int(math.Floor(float64(y)*gridHeight))
+			maxY := sourceImage.Bounds().Min.Y + int(math.Floor(float64(y+1)*gridHeight))
 
 			// Extract the current grid image from the original image
 			gridImage := sourceImage.(interface {
@@ -111,8 +173,8 @@ type SnakeSpace struct {
 
 func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 	// Define the RGB values for food, snake, and black
-	foodColor := color{0x41, 0x6E, 0xD8}  // RGB: #416ED8
-	snakeColor := color{0x0A, 0x87, 0x54} // RGB: #0A8754
+	foodColor := color{0x0A, 0x87, 0x54}  // RGB: #0A8754
+	snakeColor := color{0x41, 0x6E, 0xD8} // RGB: #416ED8
 	blackColor := color{0x00, 0x00, 0x00} // RGB: #000000
 
 	// Initialize the SnakeGrid struct with default values
@@ -125,15 +187,21 @@ func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 	imageWidth := gridImage.Bounds().Dx()
 	imageHeight := gridImage.Bounds().Dy()
 
+	minX := gridImage.Bounds().Min.X
+	minY := gridImage.Bounds().Min.Y
+
 	// Sample the pixels at the midpoints in all four directions
 	midpoints := []struct {
 		X, Y int
 	}{
-		{imageWidth / 2, 0},               // Top
-		{imageWidth / 2, imageHeight - 1}, // Bottom
-		{0, imageHeight / 2},              // Left
-		{imageWidth - 1, imageHeight / 2}, // Right
+		{minX + imageWidth/2, minY},                   // Top
+		{minX + imageWidth/2, minY + imageHeight - 1}, // Bottom
+		{minX, minY + imageHeight/2},                  // Left
+		{minX + imageWidth - 1, minY + imageHeight/2}, // Right
 	}
+
+	// fmt.Println("Midpoints:")
+	// fmt.Println(midpoints)
 
 	adjacencyCount := 0
 
@@ -141,9 +209,14 @@ func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 	for idx, midpoint := range midpoints {
 		pixel := gridImage.At(midpoint.X, midpoint.Y)
 		red, green, blue, _ := pixel.RGBA()
+		red >>= 8
+		green >>= 8
+		blue >>= 8
 
 		// Check if the midpoint matches the snake color
 		if compareColors(color{red, green, blue}, snakeColor) {
+			fmt.Println("Found snake adjacency at midpoint:", midpoint)
+
 			adjacencyCount++
 
 			snakeSpace.SnakeSlot = Snake
