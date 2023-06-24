@@ -38,7 +38,7 @@ func main() {
 		fmt.Println("Received event:", event)
 		switch event := event.(type) {
 		case *mastodon.UpdateEvent:
-			fmt.Println("-> and it's an update event")
+			fmt.Println("-> and it's an update event from " + event.Status.Account.Acct)
 			// Check if the update is from the snake bot
 			if event.Status.Account.Acct == "snake_game@botsin.space" {
 				fmt.Println("-> and it's from the snake bot")
