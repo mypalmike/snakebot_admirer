@@ -40,7 +40,7 @@ func main() {
 		case *mastodon.UpdateEvent:
 			fmt.Println("-> and it's an update event from " + event.Status.Account.Acct)
 			// Check if the update is from the snake bot
-			if event.Status.Account.Acct == "snake_game@botsin.space" {
+			if event.Status.Account.Acct == "snake_game@botsin.space" || event.Status.Account.Acct == "snake_game" {
 				fmt.Println("-> and it's from the snake bot")
 				// Extract the image attachment
 				if len(event.Status.MediaAttachments) > 0 && event.Status.MediaAttachments[0].Type == "image" {
