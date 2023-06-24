@@ -77,12 +77,6 @@ func autocropImage(sourceImage image.Image) (image.Image, error) {
 		}
 	}
 
-	fmt.Println("Crop image results:")
-	fmt.Println("minX:", minX)
-	fmt.Println("minY:", minY)
-	fmt.Println("maxX:", maxX)
-	fmt.Println("maxY:", maxY)
-
 	// Now return a cropped version of the image
 	return sourceImage.(interface {
 		SubImage(r image.Rectangle) image.Image
@@ -215,8 +209,6 @@ func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 
 		// Check if the midpoint matches the snake color
 		if compareColors(color{red, green, blue}, snakeColor) {
-			fmt.Println("Found snake adjacency at midpoint:", midpoint)
-
 			adjacencyCount++
 
 			snakeSpace.SnakeSlot = Snake
@@ -244,9 +236,9 @@ func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 		}
 	}
 
-	if snakeSpace.SnakeSlot == Snake {
-		return snakeSpace, nil
-	}
+	// if snakeSpace.SnakeSlot == Snake {
+	// 	return snakeSpace, nil
+	// }
 
 	// Iterate over each pixel in the grid image
 	bounds := gridImage.Bounds()
@@ -254,6 +246,9 @@ func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			pixel := gridImage.At(x, y)
 			red, green, blue, _ := pixel.RGBA()
+			red >>= 8
+			green >>= 8
+			blue >>= 8
 
 			if compareColors(color{red, green, blue}, blackColor) {
 				snakeSpace.SnakeSlot = Head
