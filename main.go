@@ -69,8 +69,10 @@ func main() {
 					go func() {
 						// Sleep until two minutes before the poll expires
 						sleepTime := event.Status.Poll.ExpiresAt.Sub(event.Status.CreatedAt) - (2 * time.Minute)
-						fmt.Println("Timer coroutine sleeping for", sleepTime)
+						fmt.Println("⏰ Timer coroutine sleeping for", sleepTime)
 						time.Sleep(sleepTime)
+
+						fmt.Println("⏰ Timer coroutine woke up. Sending message to poll processing goroutine")
 
 						// After waking up, send a message to the poll processing goroutine
 						pollChannel <- PollMessage{
@@ -139,13 +141,14 @@ func main() {
 					fmt.Println("Best move determined")
 
 					// Respond to the post with the chosen move
-					makePost(client, event, snakeSpaceGrid, bestMove)
+					myUpdateId := makePost(client, event, snakeSpaceGrid, bestMove)
 
 					// Tell the poll processing goroutine that we've made a post
 					pollChannel <- PollMessage{
 						MessageType: NewState,
 						UpdateID:    event.Status.ID,
 						MyVote:      bestMove,
+						MyUpdateId:  myUpdateId,
 					}
 
 					fmt.Println("Post made")
@@ -155,7 +158,7 @@ func main() {
 	}
 }
 
-func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGrid [][]SnakeSpace, move string) {
+func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGrid [][]SnakeSpace, move string) mastodon.ID {
 	fmt.Println("Making mastodon post")
 
 	// Implement post reply logic here
@@ -170,10 +173,12 @@ func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGr
 	status += "I think the snake should move " + move + " next. But I'm not that smart."
 
 	// Post a new message, referring to the original message by its URL
-	_, err := client.PostStatus(context.Background(), &mastodon.Toot{
+	post, err := client.PostStatus(context.Background(), &mastodon.Toot{
 		Status: status,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	return post.ID
 }
