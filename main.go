@@ -11,6 +11,10 @@ import (
 )
 
 func main() {
+	// Uncomment this to test the code without connecting to Mastodon
+	// testMain()
+	// return
+
 	mastodonServer := os.Getenv("MASTODON_SERVER")
 	clientKey := os.Getenv("CLIENT_KEY")
 	clientSecret := os.Getenv("CLIENT_SECRET")

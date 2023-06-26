@@ -83,20 +83,41 @@ func logAnalysis(snakeSpaceGrid [][]SnakeSpace, move string) {
 
 func snakeSpaceGridAsString(snakeSpaceGrid [][]SnakeSpace) string {
 	result := ""
-	for _, row := range snakeSpaceGrid {
-		for _, snakeSpace := range row {
+
+	// Top border
+	result += "┌"
+	for i := 0; i < len(snakeSpaceGrid[0]); i++ {
+		result += "─"
+	}
+	result += "┐\n"
+
+	// Middle
+	for iCol, row := range snakeSpaceGrid {
+		result += "│"
+		for iRow, snakeSpace := range row {
+			isEven := (iCol+iRow)%2 == 0
 			if snakeSpace.SnakeSlot == Head {
-				result += "☺"
+				result += "╋"
 			} else if snakeSpace.SnakeSlot == Snake {
 				result += lookupAdjacencyUnicode(int64(snakeSpace.Adjacencies))
 			} else if snakeSpace.SnakeSlot == Food {
-				result += "♥"
-			} else {
+				result += "▖"
+			} else if isEven {
 				result += "░"
+			} else {
+				result += "▒"
 			}
 		}
-		result += "\n"
+		result += "│\n"
 	}
+
+	// Bottom border
+	result += "└"
+	for i := 0; i < len(snakeSpaceGrid[0]); i++ {
+		result += "─"
+	}
+	result += "┘"
+
 	return result
 
 }
@@ -104,29 +125,29 @@ func snakeSpaceGridAsString(snakeSpaceGrid [][]SnakeSpace) string {
 func lookupAdjacencyUnicode(adjacency int64) string {
 	switch adjacency {
 	case Up:
-		return "↑"
+		return "╹"
 	case Down:
-		return "↓"
+		return "╻"
 	case Left:
-		return "←"
+		return "╸"
 	case Right:
-		return "→"
+		return "╺"
 	}
 
 	if adjacency == Up|Down {
-		return "│"
+		return "║"
 	} else if adjacency == Left|Right {
-		return "─"
+		return "═"
 	} else if adjacency == Up|Right {
-		return "└"
+		return "╚"
 	} else if adjacency == Up|Left {
-		return "┘"
+		return "╝"
 	} else if adjacency == Down|Right {
-		return "┌"
+		return "╔"
 	} else if adjacency == Down|Left {
-		return "┐"
+		return "╗"
 	}
-	return "?"
+	return "┄"
 }
 
 func printSnakeSpace(snakeSpaceGrid [][]SnakeSpace) {
