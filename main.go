@@ -141,6 +141,7 @@ func main() {
 					// Respond to the post with the chosen move
 					makePost(client, event, snakeSpaceGrid, bestMove)
 
+					// Tell the poll processing goroutine that we've made a post
 					pollChannel <- PollMessage{
 						MessageType: NewState,
 						UpdateID:    event.Status.ID,
