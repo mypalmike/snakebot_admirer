@@ -6,6 +6,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"time"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -29,6 +30,10 @@ func main() {
 
 	fmt.Println("Connected to Mastodon server")
 
+	// Create a channel and goroutine to process votes on polls
+	pollChannel := make(chan PollMessage)
+	go processPolls(pollChannel, client)
+
 	// Create a channel to receive updates from the user's home timeline
 	stream, err := client.StreamingUser(context.Background())
 	if err != nil {
@@ -46,8 +51,37 @@ func main() {
 			// Check if the update is from the snake bot
 			if event.Status.Account.Acct == "snake_game@botsin.space" || event.Status.Account.Acct == "snake_game" {
 				fmt.Println("-> and it's from the snake bot")
-				// Extract the image attachment
-				if len(event.Status.MediaAttachments) > 0 && event.Status.MediaAttachments[0].Type == "image" {
+				if event.Status.Poll != nil {
+					fmt.Println("-> and it's got a poll")
+
+					// Type of InReplyToID is interface{}, so we need to convert it to a string
+					originalStatusIdStr := mastodon.ID(fmt.Sprintf("%v", event.Status.InReplyToID))
+
+					// Send a message to the poll processing goroutine
+					pollChannel <- PollMessage{
+						MessageType: NewPoll,
+						UpdateID:    originalStatusIdStr,
+						PollID:      event.Status.Poll.ID,
+						PollOptions: event.Status.Poll.Options,
+					}
+
+					// Run timer coroutine to wake up two minutes before the poll expires
+					go func() {
+						// Sleep until two minutes before the poll expires
+						sleepTime := event.Status.Poll.ExpiresAt.Sub(event.Status.CreatedAt) - (2 * time.Minute)
+						fmt.Println("Timer coroutine sleeping for", sleepTime)
+						time.Sleep(sleepTime)
+
+						// After waking up, send a message to the poll processing goroutine
+						pollChannel <- PollMessage{
+							MessageType: TimerCheck,
+							UpdateID:    originalStatusIdStr,
+							PollID:      event.Status.Poll.ID,
+						}
+					}()
+
+				} else if len(event.Status.MediaAttachments) > 0 && event.Status.MediaAttachments[0].Type == "image" {
+					// Process the image
 					fmt.Println("-> and it's got an image")
 
 					imageData, err := downloadImage(event.Status.MediaAttachments[0].URL)
@@ -106,6 +140,12 @@ func main() {
 
 					// Respond to the post with the chosen move
 					makePost(client, event, snakeSpaceGrid, bestMove)
+
+					pollChannel <- PollMessage{
+						MessageType: NewState,
+						UpdateID:    event.Status.ID,
+						MyVote:      bestMove,
+					}
 
 					fmt.Println("Post made")
 				}
