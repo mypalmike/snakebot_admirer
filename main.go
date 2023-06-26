@@ -120,13 +120,13 @@ func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGr
 	// Implement post reply logic here
 	gridStr := snakeSpaceGridAsString(snakeSpaceGrid)
 
-	status := "I am watching snakebot slithering around the board. The most recent update I saw was "
+	status := "I am watching snakebot slithering. The most recent update I saw was "
 	status += event.Status.URL
 	status += "\n\n"
-	status += "My eyes aren't always perfect, but I think I see this:\n\n"
+	status += "This is what I see, in text form:\n\n"
 	status += gridStr
 	status += "\n\n"
-	status += "A good move might be " + move + ". But I'm not super good at this yet, and there may be better moves."
+	status += "I think the snake should move " + move + " next. But I'm not that smart."
 
 	// Post a new message, referring to the original message by its URL
 	_, err := client.PostStatus(context.Background(), &mastodon.Toot{
