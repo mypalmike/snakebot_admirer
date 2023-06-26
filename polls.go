@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"regexp"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -43,6 +45,11 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 	myVote := ""
 	var currentPollID mastodon.ID
 	optionLookup := make(map[string]int)
+
+	regexMove, err := regexp.Compile("[Mm]ove (\\w+)")
+	if err != nil {
+		log.Fatal("Error compiling regexp:", err)
+	}
 
 	for {
 		if currentState == UndefPollState {
@@ -86,7 +93,13 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 			}
 			currentPollID = message.PollID
 			for i, option := range message.PollOptions {
-				optionLookup[option.Title] = i
+				matchMove := regexMove.FindStringSubmatch(option.Title)
+				if len(matchMove) != 2 {
+					fmt.Println("Error parsing move from poll option title:", option.Title)
+					continue
+				}
+				direction := matchMove[1]
+				optionLookup[direction] = i
 			}
 			currentState = WaitingForTimer
 		case TimerCheck:
