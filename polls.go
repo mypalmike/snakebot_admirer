@@ -46,7 +46,7 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 	var currentPollID mastodon.ID
 	optionLookup := make(map[string]int)
 
-	regexMove, err := regexp.Compile("[Mm]ove (\\w+)")
+	regexMove, err := regexp.Compile(`[Mm]ove (\w+)`)
 	if err != nil {
 		log.Fatal("Error compiling regexp:", err)
 	}
@@ -137,6 +137,9 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 					Status:      msg,
 					InReplyToID: currentUpdateID,
 				})
+				if err != nil {
+					fmt.Println("Error posting status:", err)
+				}
 
 				// Vote
 				vote := optionLookup[myVote]
@@ -147,6 +150,9 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 					fmt.Println("Error voting:", err)
 				}
 			}
+
+			// Reset the state
+			currentState = UndefPollState
 		}
 	}
 }
