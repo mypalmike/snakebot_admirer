@@ -170,7 +170,7 @@ func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGr
 	status += "This is what I see, in text form:\n\n"
 	status += gridStr
 	status += "\n\n"
-	status += "I think the snake should move " + move + " next. But I'm not that smart."
+	status += "I'm not very smart, but I think the snake should move " + move + " next."
 
 	// Post a new message, referring to the original message by its URL
 	post, err := client.PostStatus(context.Background(), &mastodon.Toot{
