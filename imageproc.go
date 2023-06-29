@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"math"
@@ -8,6 +9,41 @@ import (
 	"regexp"
 	"strconv"
 )
+
+// Define the RGB values for food, snake, and black
+var foodColor = color{0x0A, 0x87, 0x54}  // RGB: #0A8754
+var snakeColor = color{0x41, 0x6E, 0xD8} // RGB: #416ED8
+var blackColor = color{0x00, 0x00, 0x00} // RGB: #000000
+var whiteColor = color{0xFF, 0xFF, 0xFF} // RGB: #FFFFFF
+
+type SnakeSlot int64
+
+const (
+	UndefSlot SnakeSlot = iota
+	Empty
+	Snake
+	Food
+	Head
+)
+
+type Adjacencies int64
+
+const (
+	UndefAdj Adjacencies = 0
+	Up                   = 1 << (iota - 1)
+	Down
+	Left
+	Right
+)
+
+type SnakeSpace struct {
+	SnakeSlot   SnakeSlot
+	Adjacencies Adjacencies
+}
+
+type color struct {
+	r, g, b uint32
+}
 
 func downloadImage(imageURL string) (image.Image, error) {
 	// Send HTTP GET request to download the image
@@ -140,129 +176,6 @@ func imageToGridImages(sourceImage image.Image, width int, height int) ([][]imag
 	return images, nil
 }
 
-type SnakeSlot int64
-
-const (
-	UndefSlot SnakeSlot = iota
-	Empty
-	Snake
-	Food
-	Head
-)
-
-type Adjacencies int64
-
-const (
-	UndefAdj Adjacencies = 0
-	Up                   = 1 << (iota - 1)
-	Down
-	Left
-	Right
-)
-
-type SnakeSpace struct {
-	SnakeSlot   SnakeSlot
-	Adjacencies Adjacencies
-}
-
-func imageToSnakeSpace(gridImage image.Image) (SnakeSpace, error) {
-	// Define the RGB values for food, snake, and black
-	foodColor := color{0x0A, 0x87, 0x54}  // RGB: #0A8754
-	snakeColor := color{0x41, 0x6E, 0xD8} // RGB: #416ED8
-	blackColor := color{0x00, 0x00, 0x00} // RGB: #000000
-
-	// Initialize the SnakeGrid struct with default values
-	snakeSpace := SnakeSpace{
-		SnakeSlot:   UndefSlot,
-		Adjacencies: UndefAdj,
-	}
-
-	// Get the dimensions of the grid image
-	imageWidth := gridImage.Bounds().Dx()
-	imageHeight := gridImage.Bounds().Dy()
-
-	minX := gridImage.Bounds().Min.X
-	minY := gridImage.Bounds().Min.Y
-
-	// Sample the pixels at the midpoints in all four directions
-	midpoints := []struct {
-		X, Y int
-	}{
-		{minX + imageWidth/2, minY},                   // Top
-		{minX + imageWidth/2, minY + imageHeight - 1}, // Bottom
-		{minX, minY + imageHeight/2},                  // Left
-		{minX + imageWidth - 1, minY + imageHeight/2}, // Right
-	}
-
-	// fmt.Println("Midpoints:")
-	// fmt.Println(midpoints)
-
-	adjacencyCount := 0
-
-	// Iterate over the midpoints and check if they match the snake color
-	for idx, midpoint := range midpoints {
-		pixel := gridImage.At(midpoint.X, midpoint.Y)
-		red, green, blue, _ := pixel.RGBA()
-		red >>= 8
-		green >>= 8
-		blue >>= 8
-
-		// Check if the midpoint matches the snake color
-		if compareColors(color{red, green, blue}, snakeColor) {
-			adjacencyCount++
-
-			snakeSpace.SnakeSlot = Snake
-
-			// Determine the direction based on the midpoint
-			direction := UndefAdj
-			if idx == 0 {
-				direction = Up
-			} else if idx == 1 {
-				direction = Down
-			} else if idx == 2 {
-				direction = Left
-			} else if idx == 3 {
-				direction = Right
-			}
-
-			// Append the direction to the adjacencies array
-			snakeSpace.Adjacencies |= direction
-
-			if adjacencyCount == 0 {
-				return snakeSpace, fmt.Errorf("Found no snake adjacencies")
-			} else if adjacencyCount > 2 {
-				return snakeSpace, fmt.Errorf("Found more than two snake adjacencies")
-			}
-		}
-	}
-
-	// if snakeSpace.SnakeSlot == Snake {
-	// 	return snakeSpace, nil
-	// }
-
-	// Iterate over each pixel in the grid image
-	bounds := gridImage.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			pixel := gridImage.At(x, y)
-			red, green, blue, _ := pixel.RGBA()
-			red >>= 8
-			green >>= 8
-			blue >>= 8
-
-			if compareColors(color{red, green, blue}, blackColor) {
-				snakeSpace.SnakeSlot = Head
-				return snakeSpace, nil
-			} else if compareColors(color{red, green, blue}, foodColor) {
-				snakeSpace.SnakeSlot = Food
-				return snakeSpace, nil
-			}
-		}
-	}
-
-	return snakeSpace, nil
-}
-
 func compareColors(c1, c2 color) bool {
 	// Compare RGB values with a tolerance for slight differences
 	tolerance := 10
@@ -273,10 +186,6 @@ func compareColors(c1, c2 color) bool {
 
 func absDiff(a, b int) int {
 	return int(math.Abs(float64(a - b)))
-}
-
-type color struct {
-	r, g, b uint32
 }
 
 func generateSnakeShape(gridData [][]SnakeSpace) ([]Position, error) {
@@ -294,7 +203,7 @@ func generateSnakeShape(gridData [][]SnakeSpace) ([]Position, error) {
 	}
 
 	if !found {
-		return nil, fmt.Errorf("Could not find snake head")
+		return nil, fmt.Errorf("could not find snake head")
 	}
 
 	// Perform a search to generate the snake array
@@ -330,57 +239,170 @@ func generateSnakeShape(gridData [][]SnakeSpace) ([]Position, error) {
 			cameFrom = Right
 			currentPos.X--
 		} else {
-			return nil, fmt.Errorf("Could not find a valid adjacency while generating snake array")
+			return nil, fmt.Errorf("could not find a valid adjacency while generating snake array")
 		}
 
 		length++
 
 		if length > len(gridData)*len(gridData[0]) {
-			return nil, fmt.Errorf("Snake array length exceeded grid size, infinite loop suspected")
+			return nil, fmt.Errorf("snake array length exceeded grid size, infinite loop suspected")
 		}
 	}
 
 	return snakeArray, nil
 }
 
-// Helper function to check if a string slice contains a given string
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
+func convertImageGridToSnakeSpaceGrid(imageGrid [][]image.Image) ([][]SnakeSpace, error) {
+	gridSizeY := len(imageGrid)
+	if gridSizeY == 0 {
+		return nil, errors.New("empty image grid in y direction")
+	}
+	gridSizeX := len(imageGrid[0])
+	if gridSizeX == 0 {
+		return nil, errors.New("empty image grid in x direction")
+	}
+
+	// Initialize the SnakeSpace grid
+	snakeSpaceGrid := make([][]SnakeSpace, gridSizeY)
+	for i := range snakeSpaceGrid {
+		snakeSpaceGrid[i] = make([]SnakeSpace, gridSizeX)
+	}
+
+	// First pass: Categorize center points of each grid
+	for y := 0; y < gridSizeY; y++ {
+		for x := 0; x < gridSizeX; x++ {
+			snakeSpaceGrid[y][x].SnakeSlot = sampleSnakeSlot(imageGrid[y][x])
 		}
 	}
-	return false
-}
 
-func countOnBits(n int64) int {
-	count := 0
-	for n != 0 {
-		count += int(n & 1)
-		n >>= 1
-	}
-	return count
-}
-
-func convertImageGridToSnakeSpaceGrid(imageGrid [][]image.Image) ([][]SnakeSpace, error) {
-	// Initialize the snake space grid
-	snakeSpaceGrid := make([][]SnakeSpace, len(imageGrid))
-	for i := range snakeSpaceGrid {
-		snakeSpaceGrid[i] = make([]SnakeSpace, len(imageGrid[i]))
-	}
-
-	// Iterate over the image grid and convert each image to a SnakeSpace
-	for y := 0; y < len(imageGrid); y++ {
-		for x := 0; x < len(imageGrid[y]); x++ {
-			snakeSpace, err := imageToSnakeSpace(imageGrid[y][x])
-			if err != nil {
-				return nil, err
+	// Second pass: Adjacency sampling for snake spaces
+	for y := 0; y < gridSizeY; y++ {
+		for x := 0; x < gridSizeX; x++ {
+			if snakeSpaceGrid[y][x].SnakeSlot == Snake {
+				adjacencies, err := sampleAdjacencies(imageGrid[y][x])
+				if err != nil {
+					return nil, err
+				}
+				snakeSpaceGrid[y][x].Adjacencies = adjacencies
 			}
-			snakeSpaceGrid[y][x] = snakeSpace
+		}
+	}
+
+	// Third pass: Thorough sampling for snake spaces with single adjacency (head and tail)
+	for y := 0; y < gridSizeY; y++ {
+		for x := 0; x < gridSizeX; x++ {
+			if snakeSpaceGrid[y][x].SnakeSlot == Snake && countBits(int64(snakeSpaceGrid[y][x].Adjacencies)) == 1 {
+				if sampleEyes(imageGrid[y][x]) {
+					snakeSpaceGrid[y][x].SnakeSlot = Head
+				}
+			}
 		}
 	}
 
 	return snakeSpaceGrid, nil
+}
+
+func sampleSnakeSlot(img image.Image) SnakeSlot {
+	bounds := img.Bounds()
+
+	centerX := bounds.Min.X + (bounds.Dx() / 2)
+	centerY := bounds.Min.Y + (bounds.Dy() / 2)
+
+	pixel := img.At(centerX, centerY)
+	red, green, blue, _ := pixel.RGBA()
+	red >>= 8
+	green >>= 8
+	blue >>= 8
+	return snakeSlotFromColor(color{red, green, blue})
+}
+
+func snakeSlotFromColor(pixel color) SnakeSlot {
+	if compareColors(pixel, snakeColor) {
+		return Snake
+	} else if compareColors(pixel, foodColor) {
+		return Food
+	}
+
+	return Empty
+}
+
+func sampleAdjacencies(img image.Image) (Adjacencies, error) {
+	// Get the dimensions of the grid image
+	imageWidth := img.Bounds().Dx()
+	imageHeight := img.Bounds().Dy()
+
+	minX := img.Bounds().Min.X
+	minY := img.Bounds().Min.Y
+
+	// Sample the pixels at the midpoints in all four directions
+	midpoints := []struct {
+		X, Y int
+	}{
+		{minX + imageWidth/2, minY},                   // Top
+		{minX + imageWidth/2, minY + imageHeight - 1}, // Bottom
+		{minX, minY + imageHeight/2},                  // Left
+		{minX + imageWidth - 1, minY + imageHeight/2}, // Right
+	}
+
+	adjacencyCount := 0
+	adjacencies := UndefAdj
+
+	// Iterate over the midpoints and check if they match the snake color
+	for idx, midpoint := range midpoints {
+		pixel := img.At(midpoint.X, midpoint.Y)
+		red, green, blue, _ := pixel.RGBA()
+		red >>= 8
+		green >>= 8
+		blue >>= 8
+
+		// Check if the midpoint matches the snake color
+		if compareColors(color{red, green, blue}, snakeColor) {
+			adjacencyCount++
+
+			newAdjacency := UndefAdj
+
+			// Determine the direction based on the midpoint
+			if idx == 0 {
+				newAdjacency = Up
+			} else if idx == 1 {
+				newAdjacency = Down
+			} else if idx == 2 {
+				newAdjacency = Left
+			} else if idx == 3 {
+				newAdjacency = Right
+			}
+
+			// Or the direction with the existing adjacencies
+			adjacencies |= newAdjacency
+		}
+	}
+
+	if adjacencyCount == 0 {
+		return UndefAdj, fmt.Errorf("found no snake adjacencies")
+	} else if adjacencyCount > 2 {
+		return UndefAdj, fmt.Errorf("found more than two snake adjacencies")
+	}
+
+	return adjacencies, nil
+}
+
+func sampleEyes(img image.Image) bool {
+	// Iterate over one diagonal of the image looking for the eyes (black or white pixels)
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		x := y - bounds.Min.Y + bounds.Min.X
+		pixel := img.At(x, y)
+		red, green, blue, _ := pixel.RGBA()
+		red >>= 8
+		green >>= 8
+		blue >>= 8
+
+		if compareColors(color{red, green, blue}, blackColor) || compareColors(color{red, green, blue}, whiteColor) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func findFood(snakeSpaceGrid [][]SnakeSpace) (Position, error) {
@@ -392,7 +414,7 @@ func findFood(snakeSpaceGrid [][]SnakeSpace) (Position, error) {
 		}
 	}
 
-	return Position{}, fmt.Errorf("Could not find food")
+	return Position{}, fmt.Errorf("could not find food")
 }
 
 func convertSnakeSpaceGridToGameState(snakeSpaceGrid [][]SnakeSpace) (GameState, error) {
@@ -435,7 +457,7 @@ func determineHeadDirection(snakeSpaceGrid [][]SnakeSpace) (string, error) {
 	}
 
 	if !found {
-		return "", fmt.Errorf("Could not find head position")
+		return "", fmt.Errorf("could not find head position")
 	}
 
 	// Use adjacency information to determine the direction of the head
@@ -450,5 +472,5 @@ func determineHeadDirection(snakeSpaceGrid [][]SnakeSpace) (string, error) {
 		return "right", nil
 	}
 
-	return "", fmt.Errorf("Could not determine head direction")
+	return "", fmt.Errorf("could not determine head direction")
 }

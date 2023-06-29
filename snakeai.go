@@ -25,8 +25,7 @@ func determineNextMove(game GameState) string {
 
 func gameOver(game GameState) bool {
 	// Check if snake collides with the wall or itself
-	head := snakeHead(game)
-	return head.X < 0 || head.X >= game.BoardWidth || head.Y < 0 || head.Y >= game.BoardHeight || collidesWithBody(game) || isTrapped(game)
+	return collidesWithWall(game) || collidesWithBody(game)
 }
 
 func snakeHead(game GameState) Position {
@@ -35,6 +34,11 @@ func snakeHead(game GameState) Position {
 
 func snakeTail(game GameState) Position {
 	return game.SnakeShape[len(game.SnakeShape)-1]
+}
+
+func collidesWithWall(game GameState) bool {
+	head := snakeHead(game)
+	return head.X < 0 || head.X >= game.BoardWidth || head.Y < 0 || head.Y >= game.BoardHeight
 }
 
 func collidesWithBody(game GameState) bool {
@@ -99,9 +103,12 @@ func evaluateMove(game GameState, move string) int {
 	// Assign scores based on different criteria
 	score := 0
 
-	// Avoiding traps (collision with wall or self)
 	if gameOver(simulatedGame) {
+		// Avoiding collisions
 		score -= 2 * game.BoardWidth * game.BoardHeight
+	} else if isTrapped(simulatedGame) {
+		// Avoid getting trapped
+		score -= game.BoardWidth * game.BoardHeight
 	}
 
 	// Distance to the food
