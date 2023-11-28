@@ -52,7 +52,7 @@ func testMain() {
 	fmt.Printf("Direction: %v\n", gameState.Direction)
 
 	// Get the best move
-	bestMove := determineNextMove(gameState)
+	bestMove, _ := determineNextMove(gameState)
 
 	// Respond to the post with the chosen move
 	logAnalysis(snakeSpaceGrid, bestMove)

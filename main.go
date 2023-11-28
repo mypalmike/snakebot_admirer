@@ -136,18 +136,19 @@ func main() {
 					fmt.Println("SnakeSpace grid converted to game state")
 
 					// Get the best move
-					bestMove := determineNextMove(gameState)
+					bestMove, mustTurn := determineNextMove(gameState)
 
 					fmt.Println("Best move determined")
 
 					// Respond to the post with the chosen move
-					myUpdateId := makePost(client, event, snakeSpaceGrid, bestMove)
+					myUpdateId := makePost(client, event, snakeSpaceGrid, bestMove, mustTurn)
 
 					// Tell the poll processing goroutine that we've made a post
 					pollChannel <- PollMessage{
 						MessageType: NewState,
 						UpdateID:    event.Status.ID,
 						MyVote:      bestMove,
+						MustTurn:    mustTurn,
 						MyUpdateId:  myUpdateId,
 					}
 
@@ -158,7 +159,7 @@ func main() {
 	}
 }
 
-func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGrid [][]SnakeSpace, move string) mastodon.ID {
+func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGrid [][]SnakeSpace, move string, mustTurn bool) mastodon.ID {
 	fmt.Println("Making mastodon post")
 
 	// Implement post reply logic here
@@ -170,6 +171,9 @@ func makePost(client *mastodon.Client, event *mastodon.UpdateEvent, snakeSpaceGr
 	status += "This is what I see, in text form:\n\n"
 	status += gridStr
 	status += "\n\n"
+	if mustTurn {
+		status += "It looks like the snake is headed for disaster if it doesn't turn!\n\n"
+	}
 	status += "I'm not very smart, but I think the snake should move " + move + " next."
 
 	// Post a new message, referring to the original message by its URL

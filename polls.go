@@ -23,6 +23,7 @@ type PollMessage struct {
 	MessageType PollMessageType
 	UpdateID    mastodon.ID
 	MyVote      string
+	MustTurn    bool
 	PollID      mastodon.ID
 	MyUpdateId  mastodon.ID
 	PollOptions []mastodon.PollOption
@@ -44,6 +45,7 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 	currentState := UndefPollState
 	var currentUpdateID mastodon.ID
 	myVote := ""
+	mustTurn := false
 	var currentPollID mastodon.ID
 	var myUpdateId mastodon.ID
 	optionLookup := make(map[string]int)
@@ -62,6 +64,7 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 			currentPollID = ""
 			myUpdateId = ""
 			myVote = ""
+			mustTurn = false
 			for k := range optionLookup {
 				delete(optionLookup, k)
 			}
@@ -82,6 +85,7 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 			}
 			currentUpdateID = message.UpdateID
 			myVote = message.MyVote
+			mustTurn = message.MustTurn
 			currentState = WaitingForPoll
 			myUpdateId = message.MyUpdateId
 		case NewPoll:
@@ -135,9 +139,9 @@ func processPolls(pollChannel chan PollMessage, client *mastodon.Client) {
 			}
 
 			// Vote for the option that matches myVote
-			if myVote != "" {
+			if mustTurn && myVote != "" {
 				// Post a message to mastodon saying that we're voting
-				msg := "The poll has almost expired but nobody has voted! "
+				msg := "Nobody has voted and I am worried that the snake is doomed if nothing is done! "
 				msg += "I usually don't vote, but this time, I'm voting to move " + myVote + "."
 				_, err := client.PostStatus(context.Background(), &mastodon.Toot{
 					Status:      msg,
